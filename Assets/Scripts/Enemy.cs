@@ -131,12 +131,206 @@ public class Enemy : MonoBehaviour
     // TODO: Enemy chases the player when it is nearby
     private void HandleEnemyBehavior2()
     {
+        Tile playerTile = playerGameObject.GetComponent<Player>().currentTile;
+
+        switch(state)
+        {
+            case EnemyState.DEFAULT: // generate random path
+
+                // Change color to gray to differentiate
+                material.color = Color.gray;
         
+                // Check if player is within vision distance
+                if (Vector3.Distance(transform.position, playerGameObject.transform.position) <= visionDistance) 
+                {
+                    // Player is within distance
+                    path = pathFinder.FindPathAStar(currentTile, playerTile);
+                    if (path.Count > 0)
+                    {
+                        targetTile = path.Dequeue();
+                        state = EnemyState.CHASE;
+                        material.color = Color.red;
+                    }
+                }
+                else
+                {
+                    if (path.Count <= 0) path = pathFinder.RandomPath(currentTile, 20);
+
+                    if (path.Count > 0)
+                    {
+                        targetTile = path.Dequeue();
+                        state = EnemyState.MOVING;
+                    }
+                }
+                break;
+            case EnemyState.CHASE:
+                // Move towards player
+                if (targetTile != null)
+                {
+                    velocity = targetTile.gameObject.transform.position - transform.position;
+                    transform.position = transform.position + (velocity.normalized * speed) * Time.deltaTime;
+                    
+                    // If the target has been reached
+                    if(Vector3.Distance(transform.position, targetTile.gameObject.transform.position) <= 0.05f)
+                    {
+                        currentTile = targetTile;
+
+                        // If there are more tiles in the path, keep moving towards player
+                        if (path.Count > 0)
+                        {
+                            targetTile = path.Dequeue();
+                        }
+                        else
+                        {
+                            // Recalculate path in case player has moved and is within visibility
+                            if (Vector3.Distance(transform.position, playerGameObject.transform.position) <= visionDistance)
+                            {
+                                path = pathFinder.FindPathAStar(currentTile, playerTile);
+                                if (path.Count > 0) targetTile = path.Dequeue();
+                            }
+                            else
+                            {
+                                // Player is out of vision range
+                                state = EnemyState.DEFAULT;
+                            }
+                        }
+                    }
+                }
+                break;
+            
+            case EnemyState.MOVING:
+                // Continue patrol
+                velocity = targetTile.gameObject.transform.position - transform.position;
+                transform.position = transform.position + (velocity.normalized * speed) * Time.deltaTime;
+
+                if (Vector3.Distance(transform.position, targetTile.gameObject.transform.position) <= 0.05f)
+                {
+                    currentTile = targetTile;
+                    state = EnemyState.DEFAULT;
+                }
+                break;
+
+            default:
+                state = EnemyState.DEFAULT;
+                break;
+        }
     }
 
-    // TODO: Third behavior (Describe what it does)
+    // TODO: Third behavior: Enemy selects a tile within range of they player and moves toward that tile.
     private void HandleEnemyBehavior3()
     {
+        Tile playerTile = playerGameObject.GetComponent<Player>().currentTile;
 
+        switch(state)
+        {
+            case EnemyState.DEFAULT: // generate random path
+
+                // Change color to blue to differentiate
+                material.color = Color.blue;
+        
+                // Check if player is within vision distance
+                if (Vector3.Distance(transform.position, playerGameObject.transform.position) <= visionDistance) 
+                {
+                    // Player is within distance
+                    Tile nearbyTile = getTileNearPlayer(playerTile);
+                    if(nearbyTile != null)
+                    {
+                        path = pathFinder.FindPathAStar(currentTile, nearbyTile);
+                        if (path.Count > 0)
+                        {
+                            targetTile = path.Dequeue();
+                            state = EnemyState.CHASE;
+                            material.color = Color.red;
+                        }
+                    }
+                }
+                else
+                {
+                    if (path.Count <= 0) path = pathFinder.RandomPath(currentTile, 20);
+
+                    if (path.Count > 0)
+                    {
+                        targetTile = path.Dequeue();
+                        state = EnemyState.MOVING;
+                    }
+                }
+                break;
+            case EnemyState.CHASE:
+                // Move towards player
+                if (targetTile != null)
+                {
+                    velocity = targetTile.gameObject.transform.position - transform.position;
+                    transform.position = transform.position + (velocity.normalized * speed) * Time.deltaTime;
+                    
+                    // If the target has been reached
+                    if(Vector3.Distance(transform.position, targetTile.gameObject.transform.position) <= 0.05f)
+                    {
+                        currentTile = targetTile;
+
+                        // If there are more tiles in the path, keep moving towards player
+                        if (path.Count > 0)
+                        {
+                            targetTile = path.Dequeue();
+                        }
+                        else
+                        {
+                            // Recalculate path in case player has moved and is within visibility
+                            if (Vector3.Distance(transform.position, playerGameObject.transform.position) <= visionDistance)
+                            {
+                                Tile nearbyTile = getTileNearPlayer(playerTile);
+                                if(nearbyTile != null)
+                                {
+                                    path = pathFinder.FindPathAStar(currentTile, nearbyTile);
+                                    if (path.Count > 0) targetTile = path.Dequeue();
+                                }
+                            }
+                            else
+                            {
+                                // Player is out of vision range
+                                state = EnemyState.DEFAULT;
+                            }
+                        }
+                    }
+                }
+                break;
+            
+            case EnemyState.MOVING:
+                // Continue patrol
+                velocity = targetTile.gameObject.transform.position - transform.position;
+                transform.position = transform.position + (velocity.normalized * speed) * Time.deltaTime;
+
+                if (Vector3.Distance(transform.position, targetTile.gameObject.transform.position) <= 0.05f)
+                {
+                    currentTile = targetTile;
+                    state = EnemyState.DEFAULT;
+                }
+                break;
+
+            default:
+                state = EnemyState.DEFAULT;
+                break;
+        }
+    }
+    
+    private Tile getTileNearPlayer(Tile playerTile)
+    {
+        List<Tile> nearbyTiles = new List<Tile>();
+
+        foreach (Tile neighbor in playerTile.Adjacents)
+        {
+            foreach (Tile secondNeighbor in neighbor.Adjacents)
+            {
+                if (secondNeighbor != playerTile && secondNeighbor.mapTile.Walkable)
+                {
+                    nearbyTiles.Add(secondNeighbor);
+                }
+            }
+        }
+
+        if (nearbyTiles.Count > 0)
+        {
+            return nearbyTiles[UnityEngine.Random.Range(0, nearbyTiles.Count)];
+        }
+        return null;
     }
 }

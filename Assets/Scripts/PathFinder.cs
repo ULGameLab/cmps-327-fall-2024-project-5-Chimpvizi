@@ -58,7 +58,37 @@ public class PathFinder
             // You just need to fill code inside this foreach only
             foreach (Tile nextTile in current.tile.Adjacents)
             {
-                
+                // Calculate the new cost to move to this tile
+                double newCost = current.costSoFar + 10; // Assuming each movement cost between adjacent tiles is 10
+
+                // Check if the nextTile is already in the DoneList
+                if (DoneList.Exists(node => node.tile == nextTile))
+                {
+                continue; // Skip this tile if already processed
+                }
+
+                // Check if the tile already exists in the TODOList with a lower cost
+                Node existingNode = TODOList.Find(node => node.tile == nextTile);
+                if (existingNode == null || newCost < existingNode.costSoFar)
+                    {
+                    // Calculate heuristic and set priority
+                    double heuristic = HeuristicsDistance(nextTile, goalTile);
+                    double priority = newCost + heuristic;
+
+                    // If the node already exists in the TODOList, update it
+                    if (existingNode != null)
+                    {
+                        existingNode.cameFrom = current;
+                        existingNode.costSoFar = newCost;
+                        existingNode.priority = priority;
+                    }
+                    else
+                    {
+                    // Add the new node to TODOList
+                     Node newNode = new Node(nextTile, priority, current, newCost);
+                    TODOList.Add(newNode);
+                    }
+                }
             }
         }
         return new Queue<Tile>(); // Returns an empty Path if no path is found
@@ -92,6 +122,8 @@ public class PathFinder
             // Just increase the F cost of the enemy tile and the tiles around it by a certain ammount (say 30)
             foreach (Tile nextTile in current.tile.Adjacents)
             {
+
+
 
             }
         }
